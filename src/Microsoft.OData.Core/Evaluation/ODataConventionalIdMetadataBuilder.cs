@@ -177,7 +177,7 @@ namespace Microsoft.OData.Evaluation
             {
                 // Compute ID from context URL rather than from parent.
                 uri = this.UriBuilder.BuildBaseUri();
-                ODataUri odataUri = this.ODataUri ?? this.MetadataContext.ODataUri;
+                IODataUri odataUri = this.ODataUri ?? this.MetadataContext.ODataUri;
 
                 if (odataUri == null || odataUri.Path == null || odataUri.Path.Count == 0)
                 {
@@ -270,7 +270,7 @@ namespace Microsoft.OData.Evaluation
         /// <param name="baseUri">The service root Uri.</param>
         /// <param name="odataUri">The request Uri.</param>
         /// <returns>The resource path.</returns>
-        private Uri GetContainingEntitySetUri(Uri baseUri, ODataUri odataUri)
+        private Uri GetContainingEntitySetUri(Uri baseUri, IODataUri odataUri)
         {
             ODataPath path = odataUri.Path;
             List<ODataPathSegment> segments = path.ToList();

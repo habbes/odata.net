@@ -76,7 +76,7 @@ namespace Microsoft.OData
         /// <param name="odataUri">The odata uri info for current query.</param>
         /// <param name="model">The model used to handle unsigned int conversions.</param>
         /// <returns>The generated ODataContextUrlInfo.</returns>
-        internal static ODataContextUrlInfo Create(ODataValue value, ODataVersion version, ODataUri odataUri = null, IEdmModel model = null)
+        internal static ODataContextUrlInfo Create(ODataValue value, ODataVersion version, IODataUri odataUri = null, IEdmModel model = null)
         {
             return new ODataContextUrlInfo()
             {
@@ -120,7 +120,7 @@ namespace Microsoft.OData
         /// <param name="odataUri">The odata uri info for current query.</param>
         /// <param name="version">The OData Version of the response.</param>
         /// <returns>The generated ODataContextUrlInfo.</returns>
-        internal static ODataContextUrlInfo Create(IEdmNavigationSource navigationSource, string expectedEntityTypeName, bool isSingle, ODataUri odataUri, ODataVersion version)
+        internal static ODataContextUrlInfo Create(IEdmNavigationSource navigationSource, string expectedEntityTypeName, bool isSingle, IODataUri odataUri, ODataVersion version)
         {
             EdmNavigationSourceKind kind = navigationSource.NavigationSourceKind();
             string navigationSourceEntityType = navigationSource.EntityType().FullName();
@@ -146,7 +146,7 @@ namespace Microsoft.OData
         /// <param name="isSingle">Whether target is single item.</param>
         /// <param name="odataUri">The odata uri info for current query.</param>
         /// <returns>The generated ODataContextUrlInfo.</returns>
-        internal static ODataContextUrlInfo Create(ODataResourceTypeContext typeContext, ODataVersion version, bool isSingle, ODataUri odataUri = null)
+        internal static ODataContextUrlInfo Create(ODataResourceTypeContext typeContext, ODataVersion version, bool isSingle, IODataUri odataUri = null)
         {
             Debug.Assert(typeContext != null, "typeContext != null");
 
@@ -188,7 +188,7 @@ namespace Microsoft.OData
         /// <param name="kind">The delta kind.</param>
         /// <param name="odataUri">The odata uri info for current query.</param>
         /// <returns>The generated ODataContextUrlInfo.</returns>
-        internal static ODataContextUrlInfo Create(ODataResourceTypeContext typeContext, ODataVersion version, ODataDeltaKind kind, ODataUri odataUri = null)
+        internal static ODataContextUrlInfo Create(ODataResourceTypeContext typeContext, ODataVersion version, ODataDeltaKind kind, IODataUri odataUri = null)
         {
             Debug.Assert(typeContext != null, "typeContext != null");
 
@@ -238,7 +238,7 @@ namespace Microsoft.OData
             return false;
         }
 
-        private static string ComputeNavigationPath(EdmNavigationSourceKind kind, ODataUri odataUri, string navigationSource)
+        private static string ComputeNavigationPath(EdmNavigationSourceKind kind, IODataUri odataUri, string navigationSource)
         {
             if (kind == EdmNavigationSourceKind.UnknownEntitySet)
             {
@@ -263,7 +263,7 @@ namespace Microsoft.OData
             return navigationPath ?? navigationSource;
         }
 
-        private static string ComputeResourcePath(ODataUri odataUri)
+        private static string ComputeResourcePath(IODataUri odataUri)
         {
             if (odataUri != null && odataUri.Path != null && odataUri.Path.IsIndividualProperty())
             {
@@ -273,7 +273,7 @@ namespace Microsoft.OData
             return string.Empty;
         }
 
-        private static string ComputeQueryClause(ODataUri odataUri, ODataVersion version)
+        private static string ComputeQueryClause(IODataUri odataUri, ODataVersion version)
         {
             if (odataUri != null)
             {
@@ -290,7 +290,7 @@ namespace Microsoft.OData
             return null;
         }
 
-        private static bool? ComputeIfIsUndeclared(ODataUri odataUri)
+        private static bool? ComputeIfIsUndeclared(IODataUri odataUri)
         {
             if (odataUri != null && odataUri.Path != null)
             {

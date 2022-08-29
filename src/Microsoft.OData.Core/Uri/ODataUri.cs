@@ -18,7 +18,7 @@ namespace Microsoft.OData
     /// <summary>
     /// The root node of a query. Holds the query itself plus additional metadata about the query.
     /// </summary>
-    public sealed class ODataUri
+    public sealed class ODataUri : IODataUri
     {
         /// <summary>
         /// Cache MetadataSegment as relative Uri
