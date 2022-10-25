@@ -101,7 +101,8 @@ namespace ExperimentsLib
                     Properties = new[]
                     {
                         new ODataProperty { Name = "City", Value = customer.HomeAddress.City },
-                        new ODataProperty { Name = "Misc", Value = new ODataUntypedValue() { RawValue = $"\"{customer.HomeAddress.Misc}\"" } },
+                        //new ODataProperty { Name = "Misc", Value = new ODataUntypedValue() { RawValue = customer.HomeAddress.Misc } },
+                        new ODataProperty { Name = "Misc", Value = customer.HomeAddress.Misc },
                         new ODataProperty { Name = "Street", Value = customer.HomeAddress.Street }
                     }
                 };
@@ -131,7 +132,8 @@ namespace ExperimentsLib
                         Properties = new[]
                         {
                             new ODataProperty { Name = "City", Value = address.City },
-                            new ODataProperty { Name = "Misc", Value = new ODataUntypedValue() { RawValue = $"\"{address.Misc}\"" } },
+                            //new ODataProperty { Name = "Misc", Value = new ODataUntypedValue() { RawValue = address.Misc } },
+                            new ODataProperty { Name = "Misc", Value = address.Misc },
                             new ODataProperty { Name = "Street", Value = address.Street }
                         }
                     };

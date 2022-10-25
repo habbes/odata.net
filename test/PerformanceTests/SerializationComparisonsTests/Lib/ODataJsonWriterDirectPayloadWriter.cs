@@ -61,7 +61,9 @@ namespace ExperimentsLib
                 jsonWriter.WriteName("City");
                 jsonWriter.WriteValue(customer.HomeAddress.City);
                 jsonWriter.WriteName("Misc");
-                jsonWriter.WriteRawValue($"\"{customer.HomeAddress.Misc}\"");
+                jsonWriter.WriteValue(customer.HomeAddress.Misc);
+                //jsonWriter.WriteName("Misc");
+                //jsonWriter.WriteValue($"\"{customer.HomeAddress.Misc}\"");
                 jsonWriter.WriteName("Street");
                 jsonWriter.WriteValue(customer.HomeAddress.Street);
 
@@ -80,7 +82,9 @@ namespace ExperimentsLib
                     jsonWriter.WriteName("City");
                     jsonWriter.WriteValue(address.City);
                     jsonWriter.WriteName("Misc");
-                    jsonWriter.WriteRawValue($"\"{address.Misc}\"");
+                    jsonWriter.WriteValue(address.Misc);
+                    //jsonWriter.WriteName("Misc");
+                    //jsonWriter.WriteValue($"\"{address.Misc}\"");
                     jsonWriter.WriteName("Street");
                     jsonWriter.WriteValue(address.Street);
                     jsonWriter.EndObjectScope();

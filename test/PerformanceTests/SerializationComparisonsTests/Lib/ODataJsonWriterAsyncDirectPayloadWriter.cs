@@ -63,7 +63,7 @@ namespace ExperimentsLib
                 await jsonWriter.WriteNameAsync("City");
                 await jsonWriter.WriteValueAsync(customer.HomeAddress.City);
                 await jsonWriter.WriteNameAsync("Misc");
-                await jsonWriter.WriteRawValueAsync($"\"{customer.HomeAddress.Misc}\"");
+                await jsonWriter.WriteRawValueAsync(customer.HomeAddress.Misc);
                 await jsonWriter.WriteNameAsync("Street");
                 await jsonWriter.WriteValueAsync(customer.HomeAddress.Street);
 
@@ -82,7 +82,7 @@ namespace ExperimentsLib
                     await jsonWriter.WriteNameAsync("City");
                     await jsonWriter.WriteValueAsync(address.City);
                     await jsonWriter.WriteNameAsync("Misc");
-                    await jsonWriter.WriteRawValueAsync($"\"{address.Misc}\"");
+                    await jsonWriter.WriteRawValueAsync(address.Misc);
                     await jsonWriter.WriteNameAsync("Street");
                     await jsonWriter.WriteValueAsync(address.Street);
                     await jsonWriter.EndObjectScopeAsync();

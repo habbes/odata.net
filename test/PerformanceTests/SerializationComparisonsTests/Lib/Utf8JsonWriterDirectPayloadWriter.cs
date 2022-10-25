@@ -61,7 +61,7 @@ namespace ExperimentsLib
                 jsonWriter.WriteString("City", customer.HomeAddress.City);
 #if NET6_0
                 jsonWriter.WritePropertyName("Misc");
-                jsonWriter.WriteRawValue($"\"{customer.HomeAddress.Misc}\"");
+                jsonWriter.WriteRawValue(customer.HomeAddress.Misc);
 #else
                     jsonWriter.WriteString("Misc", customer.HomeAddress.Misc as string);
 #endif
@@ -81,7 +81,7 @@ namespace ExperimentsLib
                     jsonWriter.WriteString("City", address.City);
 #if NET6_0
                     jsonWriter.WritePropertyName("Misc");
-                    jsonWriter.WriteRawValue($"\"{address.Misc}\"");
+                    jsonWriter.WriteRawValue(address.Misc);
 #else
                     jsonWriter.WriteString("Misc", address.Misc as string);
 #endif
