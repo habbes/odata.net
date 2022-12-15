@@ -3,9 +3,12 @@ using Microsoft.OData.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -192,6 +195,9 @@ namespace Microsoft.OData.Core.ExperimentalWriter
     class IntPropertyWriter<T> : IPropertyWriter<T>
     {
         private PropertyInfo property;
+#if NETCOREAPP || NET45_OR_GREATER
+        private Func<T, int> getter;
+#endif
         public IntPropertyWriter(PropertyInfo property)
         {
             this.property = property;
@@ -199,15 +205,61 @@ namespace Microsoft.OData.Core.ExperimentalWriter
 
         public void WriteValue(T entity, IODataSerializationContext context)
         {
-            // TODO: use Reflection.Emit to generate a dynamic type-safe getter method that does not box
-            int value = (int)property.GetValue(entity);
+            int value = this.GetValue(entity);
             IntWriter.Instance.Write(value, context.JsonWriter);
         }
+
+        private int GetValue(T entity)
+        {
+#if NETCOREAPP || NET45_OR_GREATER
+            return this.GetGetter()(entity);
+#else
+            // Apparently DynamicMethods is not defined in .netstandard
+            return (int)property.GetValue(entity);
+#endif
+        }
+
+#if NETCOREAPP || NET45_OR_GREATER
+        private Func<T, int> GetGetter()
+        {
+            if (this.getter == null)
+            {
+                this.getter = CreateGetter();
+            }
+
+            return this.getter;
+        }
+
+        private Func<T, int> CreateGetter()
+        {
+            // Generate and cache a getter method dynamically for retrieving the property values
+            // more efficiently
+            // If we call PropertyInfo.GetValue(), this will box the values if they're structs
+            MethodInfo realMethod = property.GetMethod;
+            Debug.Assert(realMethod != null);
+
+            Type[] argTypes = new Type[] { typeof(T) };
+            DynamicMethod dynamicMethod = new DynamicMethod("", typeof(int), argTypes);
+
+            // TODO: For simplicity, assuming T is a class/reference type and no boxing/unboxing is necessary
+            ILGenerator generator = dynamicMethod.GetILGenerator();
+
+            generator.Emit(OpCodes.Ldarg_0); // load the resource
+            generator.Emit(OpCodes.Callvirt, realMethod);
+            generator.Emit(OpCodes.Ret);
+
+            return (Func<T, int>)dynamicMethod.CreateDelegate(typeof(Func<T, int>));
+        }
+#endif
     }
 
     class StringPropertyWriter<T> : IPropertyWriter<T>
     {
         private PropertyInfo property;
+
+#if NETCOREAPP || NET45_OR_GREATER
+        Func<T, string> getter;
+#endif
 
         public StringPropertyWriter(PropertyInfo property)
         {
@@ -216,9 +268,52 @@ namespace Microsoft.OData.Core.ExperimentalWriter
 
         public void WriteValue(T entity, IODataSerializationContext context)
         {
-            string value = (string)property.GetValue(entity);
+            string value = GetValue(entity);
             StringWriter.Instance.Write(value, context.JsonWriter);
         }
+
+        private string GetValue(T entity)
+        {
+#if NETCOREAPP || NET45_OR_GREATER
+            return this.GetGetter()(entity);
+#else
+            // Apparently DynamicMethods is not defined in .netstandard
+            return (string)property.GetValue(entity);
+#endif
+        }
+
+#if NETCOREAPP || NET45_OR_GREATER
+        private Func<T, string> GetGetter()
+        {
+            if (this.getter == null)
+            {
+                this.getter = CreateGetter();
+            }
+
+            return this.getter;
+        }
+
+        private Func<T, string> CreateGetter()
+        {
+            // Generate and cache a getter method dynamically for retrieving the property values
+            // more efficiently
+            // If we call PropertyInfo.GetValue(), this will box the values if they're structs
+            MethodInfo realMethod = property.GetMethod;
+            Debug.Assert(realMethod != null);
+
+            Type[] argTypes = new Type[] { typeof(T) };
+            DynamicMethod dynamicMethod = new DynamicMethod("", typeof(string), argTypes);
+
+            // TODO: For simplicity, assuming T is a class/reference type and no boxing/unboxing is necessary
+            ILGenerator generator = dynamicMethod.GetILGenerator();
+
+            generator.Emit(OpCodes.Ldarg_0); // load the resource
+            generator.Emit(OpCodes.Callvirt, realMethod);
+            generator.Emit(OpCodes.Ret);
+
+            return (Func<T, string>)dynamicMethod.CreateDelegate(typeof(Func<T, string>));
+        }
+#endif
     }
 
     class PrimitiveCollectionPropertyWriter<TResource, TElement> : PropertyWriter<TResource>
@@ -288,7 +383,8 @@ namespace Microsoft.OData.Core.ExperimentalWriter
             object value = Property.GetValue(resource);
             // TODO: need to figure out how to let the user control untyped value serialization
             // I add quotes cause I know the sample data does not enclose the value in quotes
-            context.JsonWriter.WriteRawValue($"\"{value}\"");
+            // this causes string concatenations/allocations, so definitely not ideal
+            //context.JsonWriter.WriteRawValue($"\"{value}\"");
         }
     }
 
