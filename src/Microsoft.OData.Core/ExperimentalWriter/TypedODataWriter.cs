@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.OData.Core.ExperimentalWriter
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public class TypedODataWriter
     {
         IStreamBasedJsonWriterFactory jsonWriterFactory = null;
@@ -20,7 +21,7 @@ namespace Microsoft.OData.Core.ExperimentalWriter
         ITypeResolver resolver;
         ODataSerializationContext context;
 
-        public TypedODataWriter(IStreamBasedJsonWriterFactory jsonWriterFactory, Stream outputStream, IEdmModel model, ITypeResolver resolver)
+        public TypedODataWriter(IStreamBasedJsonWriterFactory jsonWriterFactory, Stream outputStream, IEdmModel model, ITypeResolver resolver, ODataMessageWriterSettings settings)
         {
             this.jsonWriterFactory = jsonWriterFactory;
             this.outputStream = outputStream;
@@ -31,7 +32,8 @@ namespace Microsoft.OData.Core.ExperimentalWriter
             {
                 Model = model,
                 JsonWriter = jsonWriter,
-                Resolver = resolver
+                Resolver = resolver,
+                Settings = settings
             };
         }
 
@@ -50,13 +52,34 @@ namespace Microsoft.OData.Core.ExperimentalWriter
 
             //jsonWriter.EndObjectScope();
         }
+
+        public void WriteStartResourceSet(string navigationSourceName)
+        {
+            context.JsonWriter.StartObjectScope();
+            context.JsonWriter.WriteName("@odata.context");
+            context.JsonWriter.WriteValue($"{context.Settings.ODataUri.ServiceRoot}$metadata#{navigationSourceName}");
+            context.JsonWriter.WriteName("value");
+            context.JsonWriter.StartArrayScope();
+        }
+        public void WriteEndResourceSet()
+        {
+            context.JsonWriter.EndArrayScope();
+            context.JsonWriter.EndObjectScope();
+        }
+
+        public void Flush()
+        {
+            context.JsonWriter.Flush();
+        }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public interface IResourceConverter<T>
     {
         IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public interface IPropertyWriter<TEntity>
     {
         void WriteValue(TEntity entity, IODataSerializationContext context);
@@ -67,11 +90,13 @@ namespace Microsoft.OData.Core.ExperimentalWriter
         void Write(TValue value, IJsonWriter jsonWriter);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public interface IResourceWriter<TResource>
     {
         void Write(TResource resource, IODataSerializationContext context);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public class PocoResourceConverter<T> : IResourceConverter<T>
     {
         Dictionary<IEdmProperty, IPropertyWriter<T>> _cachedProperties = new Dictionary<IEdmProperty, IPropertyWriter<T>>();
@@ -88,7 +113,7 @@ namespace Microsoft.OData.Core.ExperimentalWriter
             return propertyWriter;
         }
 
-        private IPropertyWriter<T> CreatePropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context)
+        private static IPropertyWriter<T> CreatePropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context)
         {
             // Rudimentary implementation of Get property. Assumes 1:1 name matching
             // Doesn't take inheritance into account
@@ -135,7 +160,12 @@ namespace Microsoft.OData.Core.ExperimentalWriter
                 }
             }
 
-            throw new Exception($"Property ${edmProperty.Name} has unsupported type ${edmProperty.Type.FullName()}");
+            if (edmProperty.Type.IsUntyped())
+            {
+                return new UntypedPropertyWriter<T>(clrProperty);
+            }
+
+            throw new Exception($"Property {edmProperty.Name} has unsupported type {edmProperty.Type.FullName()}");
         }
     }
 
@@ -247,6 +277,21 @@ namespace Microsoft.OData.Core.ExperimentalWriter
         }
     }
 
+    class UntypedPropertyWriter<TResource> : PropertyWriter<TResource>
+    {
+        public UntypedPropertyWriter(PropertyInfo property) : base(property)
+        {
+        }
+
+        public override void WriteValue(TResource resource, IODataSerializationContext context)
+        {
+            object value = Property.GetValue(resource);
+            // TODO: need to figure out how to let the user control untyped value serialization
+            // I add quotes cause I know the sample data does not enclose the value in quotes
+            context.JsonWriter.WriteRawValue($"\"{value}\"");
+        }
+    }
+
     abstract class PropertyWriter<T> : IPropertyWriter<T>
     {
         protected PropertyInfo Property { get; private set; }
@@ -297,29 +342,35 @@ namespace Microsoft.OData.Core.ExperimentalWriter
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public interface ITypeResolver
     {
         IResourceConverter<T> GetResourceConverter<T>();
         IResourceWriter<T> GetResourceWriter<T>();
         Type GetClrType(IEdmType edmType);
-        Type GetEdmType(Type clrType);
+        IEdmType GetEdmType(Type clrType);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public interface IODataSerializationContext
     {
         ITypeResolver Resolver { get; }
         IEdmModel Model { get; }
         IJsonWriter JsonWriter { get; }
+        ODataMessageWriterSettings Settings { get; }
         
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public class ODataSerializationContext : IODataSerializationContext
     {
-        public ITypeResolver Resolver { get; set; }
-        public IEdmModel Model { get; set; }
-        public IJsonWriter JsonWriter { get; set; }
+        public ITypeResolver Resolver { get; internal set; }
+        public IEdmModel Model { get; internal set; }
+        public IJsonWriter JsonWriter { get; internal set; }
+        public ODataMessageWriterSettings Settings { get; internal set; }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0016:Add public types and members to the declared API", Justification = "<Pending>")]
     public class DefaultTypeResolver : ITypeResolver
     {
         private ConcurrentDictionary<IEdmType, Type> edmToClrTypeCache = new ConcurrentDictionary<IEdmType, Type>();
@@ -355,9 +406,14 @@ namespace Microsoft.OData.Core.ExperimentalWriter
             return (IResourceWriter<T>)resourceWriterCache.GetOrAdd(typeof(T), _ => new ResourceWriter<T>());
         }
 
-        public Type GetEdmType(Type clrType)
+        public IEdmType GetEdmType(Type clrType)
         {
-            throw new NotImplementedException();
+            if (!clrToEdmTypeCache.TryGetValue(clrType, out IEdmType edmType))
+            {
+                throw new Exception($"Could not resolve EDM type corresponding to {clrType.FullName}");
+            }
+
+            return edmType;
         }
     }
 }

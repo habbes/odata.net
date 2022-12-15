@@ -7,6 +7,7 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.OData.Edm;
+using Microsoft.OData.Json;
 
 namespace ExperimentsLib
 {
@@ -23,6 +24,9 @@ namespace ExperimentsLib
         {
             IEdmModel model = DataModel.GetEdmModel();
             model.MarkAsImmutable();
+
+            ExperimentalWriterTypeResolver experimentalTypeResolver = new ExperimentalWriterTypeResolver(model);
+
             WriterCollection<IEnumerable<Customer>> writers = new WriterCollection<IEnumerable<Customer>>();
 
             writers.AddWriters(
@@ -66,7 +70,10 @@ namespace ExperimentsLib
                 ("ODataMessageWriter-Utf8JsonWriter-Async", new ODataMessageWriterAsyncPayloadWriter(model,
                     stream => stream.CreateUtf8JsonWriterMessage())),
                 ("ODataMessageWriter-Utf8JsonWriter-NoValidation-Async", new ODataMessageWriterAsyncPayloadWriter(model,
-                    stream => stream.CreateUtf8JsonWriterMessage(), enableValidation: false)));
+                    stream => stream.CreateUtf8JsonWriterMessage(), enableValidation: false)),
+
+                ("ExperimentalNewWriter", new ExperimentalNewWriterPayloadWriter(model,
+                    DefaultStreamBasedJsonWriterFactory.Default, experimentalTypeResolver)));
 
             return writers;
         }
