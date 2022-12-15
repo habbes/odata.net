@@ -54,8 +54,7 @@ namespace Microsoft.OData.Core.ExperimentalWriter
 
     public interface IResourceConverter<T>
     {
-        IEdmStructuredType GetEdmType(IEdmModel model);
-        IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty);
+        IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context);
     }
 
     public interface IPropertyWriter<TEntity>
@@ -78,11 +77,11 @@ namespace Microsoft.OData.Core.ExperimentalWriter
         Dictionary<IEdmProperty, IPropertyWriter<T>> _cachedProperties = new Dictionary<IEdmProperty, IPropertyWriter<T>>();
         private static Type type = typeof(T);
 
-        public virtual IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty)
+        public virtual IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context)
         {
             if (!_cachedProperties.TryGetValue(edmProperty, out var propertyWriter))
             {
-                propertyWriter = CreatePropertyWriter(edmProperty);
+                propertyWriter = CreatePropertyWriter(edmProperty, context);
                 _cachedProperties.Add(edmProperty, propertyWriter);
             }
 
@@ -147,10 +146,10 @@ namespace Microsoft.OData.Core.ExperimentalWriter
             var converter = context.Resolver.GetResourceConverter<T>();
             var jsonWriter = context.JsonWriter;
             jsonWriter.StartObjectScope();
-            var edmType = context.Resolver.GetEdmType(typeof(T));
+            var edmType = context.Resolver.GetEdmType(typeof(T)) as IEdmStructuredType;
             foreach (var property in edmType.Properties())
             {
-                var propertyWriter = converter.GetPropertyWriter(property);
+                var propertyWriter = converter.GetPropertyWriter(property, context);
                 jsonWriter.WriteName(property.Name);
                 propertyWriter.WriteValue(resource, context);
             }
