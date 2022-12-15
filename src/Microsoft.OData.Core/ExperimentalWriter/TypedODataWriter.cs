@@ -1,0 +1,364 @@
+﻿using Microsoft.OData.Edm;
+using Microsoft.OData.Json;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Microsoft.OData.Core.ExperimentalWriter
+{
+    public class TypedODataWriter
+    {
+        IStreamBasedJsonWriterFactory jsonWriterFactory = null;
+        Stream outputStream;
+        IJsonWriter jsonWriter;
+        IEdmModel model;
+        ITypeResolver resolver;
+        ODataSerializationContext context;
+
+        public TypedODataWriter(IStreamBasedJsonWriterFactory jsonWriterFactory, Stream outputStream, IEdmModel model, ITypeResolver resolver)
+        {
+            this.jsonWriterFactory = jsonWriterFactory;
+            this.outputStream = outputStream;
+            this.jsonWriter = jsonWriterFactory.CreateJsonWriter(outputStream, true, Encoding.UTF8);
+            this.model = model;
+            this.resolver = resolver;
+            this.context = new ODataSerializationContext
+            {
+                Model = model,
+                JsonWriter = jsonWriter,
+                Resolver = resolver
+            };
+        }
+
+        public void WriterResource<T>(T resource)
+        {
+            var resourceWriter = context.Resolver.GetResourceWriter<T>();
+            resourceWriter.Write(resource, context);
+            //jsonWriter.StartObjectScope();
+            //var edmType = converter.GetEdmType(model);
+            //foreach (var property in edmType.Properties())
+            //{
+            //    var propertyWriter = converter.GetPropertyWriter(property);
+            //    jsonWriter.WriteName(property.Name);
+            //    propertyWriter.WriteValue(resource, this.jsonWriter);
+            //}
+
+            //jsonWriter.EndObjectScope();
+        }
+    }
+
+    public interface IResourceConverter<T>
+    {
+        IEdmStructuredType GetEdmType(IEdmModel model);
+        IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty);
+    }
+
+    public interface IPropertyWriter<TEntity>
+    {
+        void WriteValue(TEntity entity, IODataSerializationContext context);
+    }
+
+    interface IValueWriter<TValue>
+    {
+        void Write(TValue value, IJsonWriter jsonWriter);
+    }
+
+    public interface IResourceWriter<TResource>
+    {
+        void Write(TResource resource, IODataSerializationContext context);
+    }
+
+    public class PocoResourceConverter<T> : IResourceConverter<T>
+    {
+        Dictionary<IEdmProperty, IPropertyWriter<T>> _cachedProperties = new Dictionary<IEdmProperty, IPropertyWriter<T>>();
+        private static Type type = typeof(T);
+
+        public virtual IPropertyWriter<T> GetPropertyWriter(IEdmProperty edmProperty)
+        {
+            if (!_cachedProperties.TryGetValue(edmProperty, out var propertyWriter))
+            {
+                propertyWriter = CreatePropertyWriter(edmProperty);
+                _cachedProperties.Add(edmProperty, propertyWriter);
+            }
+
+            return propertyWriter;
+        }
+
+        private IPropertyWriter<T> CreatePropertyWriter(IEdmProperty edmProperty, IODataSerializationContext context)
+        {
+            // Rudimentary implementation of Get property. Assumes 1:1 name matching
+            // Doesn't take inheritance into account
+            PropertyInfo clrProperty = type.GetProperty(edmProperty.Name);
+            if (edmProperty.Type.IsPrimitive() && edmProperty.Type.PrimitiveKind() == EdmPrimitiveTypeKind.Int32)
+            {
+                return new IntPropertyWriter<T>(clrProperty);
+            }
+
+            if (edmProperty.Type.IsPrimitive() && edmProperty.Type.PrimitiveKind() == EdmPrimitiveTypeKind.String)
+            {
+                return new StringPropertyWriter<T>(clrProperty);
+            }
+
+            if (edmProperty.Type.IsComplex())
+            {
+                Type complexPropertyWriterType = typeof(ComplexPropertyWriter<,>).MakeGenericType(type, clrProperty.PropertyType);
+                return (IPropertyWriter<T>)Activator.CreateInstance(complexPropertyWriterType, clrProperty);
+            }
+
+            if (edmProperty.Type.IsCollection())
+            {
+                var edmElementType = edmProperty.Type.AsCollection().ElementType();
+                if (edmElementType.IsPrimitive() && edmElementType.PrimitiveKind() == EdmPrimitiveTypeKind.Int32)
+                {
+                    return new PrimitiveCollectionPropertyWriter<T, int>(clrProperty);
+                }
+
+                if (edmElementType.IsPrimitive() && edmElementType.PrimitiveKind() == EdmPrimitiveTypeKind.String)
+                {
+                    return new PrimitiveCollectionPropertyWriter<T, string>(clrProperty);
+                }
+
+                if (edmElementType.IsComplex())
+                {
+                    // TODO: for simplicity, assume the CLR property type is IEnumerable<ElementType> and
+                    // extract the ElementType
+                    Type complexCollectionElementType = clrProperty.PropertyType.GetGenericArguments()[0];
+                    return (IPropertyWriter<T>)Activator.CreateInstance(
+                        typeof(ComplexCollectionPropertyWriter<,>)
+                        .MakeGenericType(type, complexCollectionElementType),
+                        clrProperty);
+                        
+                }
+            }
+
+            throw new Exception($"Property ${edmProperty.Name} has unsupported type ${edmProperty.Type.FullName()}");
+        }
+    }
+
+    class ResourceWriter<T> : IResourceWriter<T>
+    {
+        public void Write(T resource, IODataSerializationContext context)
+        {
+            var converter = context.Resolver.GetResourceConverter<T>();
+            var jsonWriter = context.JsonWriter;
+            jsonWriter.StartObjectScope();
+            var edmType = context.Resolver.GetEdmType(typeof(T));
+            foreach (var property in edmType.Properties())
+            {
+                var propertyWriter = converter.GetPropertyWriter(property);
+                jsonWriter.WriteName(property.Name);
+                propertyWriter.WriteValue(resource, context);
+            }
+
+            jsonWriter.EndObjectScope();
+        }
+    }
+
+    // Does this class need to be generic?
+    class IntPropertyWriter<T> : IPropertyWriter<T>
+    {
+        private PropertyInfo property;
+        public IntPropertyWriter(PropertyInfo property)
+        {
+            this.property = property;
+        }
+
+        public void WriteValue(T entity, IODataSerializationContext context)
+        {
+            // TODO: use Reflection.Emit to generate a dynamic type-safe getter method that does not box
+            int value = (int)property.GetValue(entity);
+            IntWriter.Instance.Write(value, context.JsonWriter);
+        }
+    }
+
+    class StringPropertyWriter<T> : IPropertyWriter<T>
+    {
+        private PropertyInfo property;
+
+        public StringPropertyWriter(PropertyInfo property)
+        {
+            this.property = property;
+        }
+
+        public void WriteValue(T entity, IODataSerializationContext context)
+        {
+            string value = (string)property.GetValue(entity);
+            StringWriter.Instance.Write(value, context.JsonWriter);
+        }
+    }
+
+    class PrimitiveCollectionPropertyWriter<TResource, TElement> : PropertyWriter<TResource>
+    {
+        public PrimitiveCollectionPropertyWriter(PropertyInfo property) : base(property)
+        {
+        }
+
+        public override void WriteValue(TResource entity, IODataSerializationContext context)
+        {
+            IEnumerable<TElement> enumerable = (IEnumerable<TElement>)Property.GetValue(entity);
+            var jsonWriter = context.JsonWriter;
+            jsonWriter.StartArrayScope();
+            foreach (TElement element in enumerable)
+            {
+                IValueWriter<TElement> valueWriter = Helpers.GetValueWriter<TElement>();
+                valueWriter.Write(element, jsonWriter);
+            }
+
+            jsonWriter.EndArrayScope();
+        }
+    }
+
+    class ComplexPropertyWriter<TResource, TProperty> : PropertyWriter<TResource>
+    {
+        public ComplexPropertyWriter(PropertyInfo property) : base(property)
+        {
+        }
+
+        public override void WriteValue(TResource resource, IODataSerializationContext context)
+        {
+            var value = (TProperty)Property.GetValue(resource); // use reflection emit to avoid boxing
+            var resourceWriter = context.Resolver.GetResourceWriter<TProperty>();
+            resourceWriter.Write(value, context);
+        }
+    }
+
+    class ComplexCollectionPropertyWriter<TResource, TElement> : PropertyWriter<TResource>
+    {
+        public ComplexCollectionPropertyWriter(PropertyInfo property) : base(property)
+        {
+        }
+
+        public override void WriteValue(TResource resource, IODataSerializationContext context)
+        {
+            IEnumerable<TElement> enumerable = (IEnumerable<TElement>)Property.GetValue(resource);
+            context.JsonWriter.StartArrayScope();
+            var itemWriter = context.Resolver.GetResourceWriter<TElement>();
+
+            foreach (TElement item in enumerable)
+            {
+                itemWriter.Write(item, context);
+            }
+
+            context.JsonWriter.EndArrayScope();
+        }
+    }
+
+    abstract class PropertyWriter<T> : IPropertyWriter<T>
+    {
+        protected PropertyInfo Property { get; private set; }
+
+        public PropertyWriter(PropertyInfo property)
+        {
+            this.Property = property;
+        }
+
+        public abstract void WriteValue(T resource, IODataSerializationContext context);
+    }
+
+    class IntWriter : IValueWriter<int>
+    {
+        public static IntWriter Instance = new IntWriter();
+        public void Write(int value, IJsonWriter jsonWriter)
+        {
+            jsonWriter.WriteValue(value);
+        }
+    }
+
+    class StringWriter : IValueWriter<string>
+    {
+        public static StringWriter Instance = new StringWriter();
+
+        public void Write(string value, IJsonWriter jsonWriter)
+        {
+            jsonWriter.WriteValue(value);
+        }
+    }
+
+    internal static class Helpers
+    {
+        public static IValueWriter<T> GetValueWriter<T>()
+        {
+            Type targetType = typeof(T);
+
+            if (targetType == typeof(int))
+            {
+                return IntWriter.Instance as IValueWriter<T>;
+            }
+            else if (targetType == typeof(string))
+            {
+                return StringWriter.Instance as IValueWriter<T>;
+            }
+
+            throw new Exception($"Could not resolve value writer for type {targetType.FullName}");
+        }
+    }
+
+    public interface ITypeResolver
+    {
+        IResourceConverter<T> GetResourceConverter<T>();
+        IResourceWriter<T> GetResourceWriter<T>();
+        Type GetClrType(IEdmType edmType);
+        Type GetEdmType(Type clrType);
+    }
+
+    public interface IODataSerializationContext
+    {
+        ITypeResolver Resolver { get; }
+        IEdmModel Model { get; }
+        IJsonWriter JsonWriter { get; }
+        
+    }
+
+    public class ODataSerializationContext : IODataSerializationContext
+    {
+        public ITypeResolver Resolver { get; set; }
+        public IEdmModel Model { get; set; }
+        public IJsonWriter JsonWriter { get; set; }
+    }
+
+    public class DefaultTypeResolver : ITypeResolver
+    {
+        private ConcurrentDictionary<IEdmType, Type> edmToClrTypeCache = new ConcurrentDictionary<IEdmType, Type>();
+        private ConcurrentDictionary<Type, IEdmType> clrToEdmTypeCache = new ConcurrentDictionary<Type, IEdmType>();
+        // TODO: instead of using object as the value type, create a non-generic IResourceConverter interface instead
+        private ConcurrentDictionary<Type, object> resourceConverterCache = new ConcurrentDictionary<Type, object>();
+        // TODO: instead of using object as the value type, create a non-generic IResourceWriter interface instead
+        private ConcurrentDictionary<Type, object> resourceWriterCache = new ConcurrentDictionary<Type, object>();
+        public virtual Type GetClrType(IEdmType edmType)
+        {
+            if (!edmToClrTypeCache.TryGetValue(edmType, out Type clrType))
+            {
+                throw new Exception($"Could not resolve CLR type corresponding to {edmType.FullTypeName()}");
+            }
+
+            return clrType;
+        }
+
+        public void MapEdmToClrType(IEdmType edmType, Type clrType)
+        {
+            // assume you can't change mappings
+            edmToClrTypeCache.TryAdd(edmType, clrType);
+            clrToEdmTypeCache.TryAdd(clrType, edmType);
+        }
+
+        public virtual IResourceConverter<T> GetResourceConverter<T>()
+        {
+            return (IResourceConverter<T>)resourceConverterCache.GetOrAdd(typeof(T), _ => new PocoResourceConverter<T>());
+        }
+
+        public virtual IResourceWriter<T> GetResourceWriter<T>()
+        {
+            return (IResourceWriter<T>)resourceWriterCache.GetOrAdd(typeof(T), _ => new ResourceWriter<T>());
+        }
+
+        public Type GetEdmType(Type clrType)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
