@@ -2822,35 +2822,34 @@ namespace Microsoft.OData.Edm
         /// <returns>The entity type of the navigation source.</returns>
         public static IEdmEntityType EntityType(this IEdmNavigationSource navigationSource)
         {
-            return navigationSource?.Type.AsElementType() as IEdmEntityType;
-            //var entitySetBase = navigationSource as IEdmEntitySetBase;
-            //if (entitySetBase != null)
-            //{
-            //    IEdmCollectionType collectionType = entitySetBase.Type as IEdmCollectionType;
+            var entitySetBase = navigationSource as IEdmEntitySetBase;
+            if (entitySetBase != null)
+            {
+                IEdmCollectionType collectionType = entitySetBase.Type as IEdmCollectionType;
 
-            //    if (collectionType != null)
-            //    {
-            //        return collectionType.ElementType.Definition as IEdmEntityType;
-            //    }
+                if (collectionType != null)
+                {
+                    return collectionType.ElementType.Definition as IEdmEntityType;
+                }
 
-            //    var unknownEntitySet = entitySetBase as IEdmUnknownEntitySet;
-            //    if (unknownEntitySet != null)
-            //    {
-            //        // Handle missing navigation target for nullable
-            //        // singleton navigation property.
-            //        return unknownEntitySet.Type as IEdmEntityType;
-            //    }
+                var unknownEntitySet = entitySetBase as IEdmUnknownEntitySet;
+                if (unknownEntitySet != null)
+                {
+                    // Handle missing navigation target for nullable
+                    // singleton navigation property.
+                    return unknownEntitySet.Type as IEdmEntityType;
+                }
 
-            //    return null;
-            //}
+                return null;
+            }
 
-            //var singleton = navigationSource as IEdmSingleton;
-            //if (singleton != null)
-            //{
-            //    return singleton.Type as IEdmEntityType;
-            //}
+            var singleton = navigationSource as IEdmSingleton;
+            if (singleton != null)
+            {
+                return singleton.Type as IEdmEntityType;
+            }
 
-            //return null;
+            return null;
         }
 
         /// <summary>
