@@ -12,17 +12,29 @@ namespace Microsoft.OData.Edm.Csdl.CsdlSemantics
     /// <summary>
     /// Provides semantics for CsdlSingleton.
     /// </summary>
-    internal class CsdlSemanticsSingleton : CsdlSemanticsNavigationSource, IEdmSingleton
+    internal class CsdlSemanticsSingleton : CsdlSemanticsNavigationSource, IEdmSingleton, IHasEntitytype
     {
         public CsdlSemanticsSingleton(CsdlSemanticsEntityContainer container, CsdlSingleton singleton)
             : base(container, singleton)
         {
         }
 
+        private IEdmType type;
+
         public override IEdmType Type
         {
-            get { return this.typeCache.GetValue(this, ComputeElementTypeFunc, null); }
+            get
+            {
+                if (type == null)
+                {
+                    type = this.typeCache.GetValue(this, ComputeElementTypeFunc, null);
+                }
+
+                return type;
+            }
         }
+
+        public IEdmEntityType EntityType => this.Type as IEdmEntityType;
 
         public override EdmContainerElementKind ContainerElementKind
         {

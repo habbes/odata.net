@@ -12,4 +12,16 @@ namespace Microsoft.OData.Edm
     public interface IEdmEntitySetBase : IEdmNavigationSource
     {
     }
+
+    /// <summary>
+    /// 
+    /// </summary>
+#pragma warning disable RS0016 // Add public types and members to the declared API
+    public interface IHasEntitytype
+#pragma warning restore RS0016 // Add public types and members to the declared API
+    {
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        IEdmEntityType EntityType { get; }
+#pragma warning restore RS0016 // Add public types and members to the declared API
+    }
 }

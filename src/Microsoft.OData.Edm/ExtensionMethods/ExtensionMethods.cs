@@ -2822,34 +2822,59 @@ namespace Microsoft.OData.Edm
         /// <returns>The entity type of the navigation source.</returns>
         public static IEdmEntityType EntityType(this IEdmNavigationSource navigationSource)
         {
-            var entitySetBase = navigationSource as IEdmEntitySetBase;
-            if (entitySetBase != null)
+            return navigationSource?.Type.AsElementType() as IEdmEntityType;
+            //var entitySetBase = navigationSource as IEdmEntitySetBase;
+            //if (entitySetBase != null)
+            //{
+            //    IEdmCollectionType collectionType = entitySetBase.Type as IEdmCollectionType;
+
+            //    if (collectionType != null)
+            //    {
+            //        return collectionType.ElementType.Definition as IEdmEntityType;
+            //    }
+
+            //    var unknownEntitySet = entitySetBase as IEdmUnknownEntitySet;
+            //    if (unknownEntitySet != null)
+            //    {
+            //        // Handle missing navigation target for nullable
+            //        // singleton navigation property.
+            //        return unknownEntitySet.Type as IEdmEntityType;
+            //    }
+
+            //    return null;
+            //}
+
+            //var singleton = navigationSource as IEdmSingleton;
+            //if (singleton != null)
+            //{
+            //    return singleton.Type as IEdmEntityType;
+            //}
+
+            //return null;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="navigationSource"></param>
+        /// <returns></returns>
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static IEdmEntityType EntityTypeOptimized(this IEdmNavigationSource navigationSource)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            return navigationSource?.Type.AsElementType() as IEdmEntityType;
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static IEdmEntityType EntityTypeOptimized2(this IEdmNavigationSource navigationSource)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            if (navigationSource is IHasEntitytype hasEntityType)
             {
-                IEdmCollectionType collectionType = entitySetBase.Type as IEdmCollectionType;
-
-                if (collectionType != null)
-                {
-                    return collectionType.ElementType.Definition as IEdmEntityType;
-                }
-
-                var unknownEntitySet = entitySetBase as IEdmUnknownEntitySet;
-                if (unknownEntitySet != null)
-                {
-                    // Handle missing navigation target for nullable
-                    // singleton navigation property.
-                    return unknownEntitySet.Type as IEdmEntityType;
-                }
-
-                return null;
+                return hasEntityType.EntityType;
             }
 
-            var singleton = navigationSource as IEdmSingleton;
-            if (singleton != null)
-            {
-                return singleton.Type as IEdmEntityType;
-            }
-
-            return null;
+            return EntityType(navigationSource);
         }
 
         #endregion

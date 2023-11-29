@@ -39,7 +39,7 @@ namespace Microsoft.OData
         /// </summary>
         public const string MethodDelete = "DELETE";
 
-        /// <summary>
+        /// <summary> 
         /// HTTP method name for PATCH requests.
         /// </summary>
         public const string MethodPatch = "PATCH";

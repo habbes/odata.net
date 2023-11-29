@@ -12,17 +12,29 @@ namespace Microsoft.OData.Edm.Csdl.CsdlSemantics
     /// <summary>
     /// Provides semantics for CsdlEntitySet.
     /// </summary>
-    internal class CsdlSemanticsEntitySet : CsdlSemanticsNavigationSource, IEdmEntitySet
+    internal class CsdlSemanticsEntitySet : CsdlSemanticsNavigationSource, IEdmEntitySet, IHasEntitytype
     {
         public CsdlSemanticsEntitySet(CsdlSemanticsEntityContainer container, CsdlEntitySet entitySet)
             : base(container, entitySet)
         {
         }
 
+        private IEdmType type;
+
         public override IEdmType Type
         {
-            get { return new EdmCollectionType(new EdmEntityTypeReference(this.typeCache.GetValue(this, ComputeElementTypeFunc, null), false)); }
+            get
+            {
+                if (type == null)
+                {
+                    type = new EdmCollectionType(new EdmEntityTypeReference(this.typeCache.GetValue(this, ComputeElementTypeFunc, null), false));
+                }
+
+                return type;
+            }
         }
+
+        public IEdmEntityType EntityType => this.Type as IEdmEntityType;
 
         public override EdmContainerElementKind ContainerElementKind
         {
