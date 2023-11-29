@@ -38,7 +38,9 @@ namespace Microsoft.OData.Metadata
     /// <remarks>This class should go away completely when the EdmLib integration is fully done.</remarks>
     [SuppressMessage("Microsoft.Maintainability", "CA1506:AvoidExcessiveClassCoupling", Justification = "The class coupling is due to mapping primitive types, lot of different types there.")]
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Edm", Justification = "Following EdmLib standards.")]
-    internal static class EdmLibraryExtensions
+#pragma warning disable RS0016 // Add public types and members to the declared API
+    public static class EdmLibraryExtensions
+#pragma warning restore RS0016 // Add public types and members to the declared API
     {
         /// <summary>
         /// Map of CLR primitive type to EDM primitive type reference. Doesn't include spatial types since they need assignability and not equality.
@@ -591,7 +593,9 @@ namespace Microsoft.OData.Metadata
         /// </summary>
         /// <param name="clrType">The CLR type to check.</param>
         /// <returns>true if the <paramref name="clrType"/> is a supported primitive type; otherwise false.</returns>
-        internal static bool IsPrimitiveType(Type clrType)
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveType(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
         {
             Debug.Assert(clrType != null, "clrType != null");
 
@@ -603,6 +607,76 @@ namespace Microsoft.OData.Metadata
 
             return PrimitiveTypeReferenceMap.ContainsKey(clrType) || typeof(ISpatial).IsAssignableFrom(clrType);
         }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return (clrType == typeof(string)
+                || clrType == typeof(int)
+                || clrType == typeof(bool)
+                || clrType == typeof(double)
+                || clrType == typeof(DateTimeOffset)
+                || clrType == typeof(Byte)
+                || clrType == typeof(Decimal)
+                || clrType == typeof(Int16)
+                || clrType == typeof(Int64)
+                || clrType == typeof(SByte)
+                || clrType == typeof(Single)
+#if ODATA_SERVICE
+                || clrType == typeof(DateTime)
+#endif
+                || clrType == typeof(Guid)
+                || clrType == typeof(TimeSpan)
+                || clrType == typeof(byte[])
+                || clrType == typeof(Stream)
+                || clrType == typeof(Boolean?)
+                || clrType == typeof(Byte?)
+#if ODATA_SERVICE
+                || clrType == typeof(DateTime?)
+#endif
+                || clrType == typeof(DateTimeOffset?)
+                || clrType == typeof(Decimal?)
+                || clrType == typeof(Double?)
+                || clrType == typeof(Int16?)
+                || clrType == typeof(Int32?)
+                || clrType == typeof(Int64?)
+                || clrType == typeof(SByte?)
+                || clrType == typeof(Single?)
+                || clrType == typeof(Guid?)
+                || clrType == typeof(TimeSpan?)
+                || clrType == typeof(Date)
+                || clrType == typeof(Date?)
+                || clrType == typeof(TimeOfDay)
+                || clrType == typeof(TimeOfDay?)
+                || clrType == typeof(UInt16)
+                || clrType == typeof(UInt32)
+                || clrType == typeof(UInt64));
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized2(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return (clrType == typeof(string)
+                || clrType == typeof(int)
+                || clrType == typeof(bool)
+                || clrType == typeof(double)
+                || clrType == typeof(DateTimeOffset)
+                || clrType == typeof(Guid)
+                || clrType == typeof(Date)
+                || clrType == typeof(Decimal)
+                || clrType == typeof(Int64)
+                || clrType == typeof(UInt16)
+                || clrType == typeof(UInt32)
+                || clrType == typeof(UInt64)
+                || PrimitiveTypeReferenceMap.ContainsKey(clrType));
+        }
+
 
         /// <summary>
         /// Creates a collection value type for the specified <paramref name="itemTypeReference"/>.
@@ -1059,20 +1133,20 @@ namespace Microsoft.OData.Metadata
             return structuredType.IsOpen;
         }
 #endif
-        #endregion
+#endregion
 
-        #region ODataLib and WCF DS Server
+                #region ODataLib and WCF DS Server
 #if !ODATA_CLIENT
-        /// <summary>
-        /// Gets the Partail name of the definition referred to by the type reference.
-        /// </summary>
-        /// <param name="typeReference">The type reference to get the partial name for.</param>
-        /// <returns>The partial name of this <paramref name="typeReference"/>.</returns>
-        /// <remarks>
-        /// Note that this method is different from the EdmLib PartialName extension method in that it also returns
-        /// names for collection types. For EdmLib, collection types are functions and thus don't have a Partial name.
-        /// The name/string they use in CSDL is just shorthand for them.
-        /// </remarks>
+                /// <summary>
+                /// Gets the Partail name of the definition referred to by the type reference.
+                /// </summary>
+                /// <param name="typeReference">The type reference to get the partial name for.</param>
+                /// <returns>The partial name of this <paramref name="typeReference"/>.</returns>
+                /// <remarks>
+                /// Note that this method is different from the EdmLib PartialName extension method in that it also returns
+                /// names for collection types. For EdmLib, collection types are functions and thus don't have a Partial name.
+                /// The name/string they use in CSDL is just shorthand for them.
+                /// </remarks>
         internal static string ODataShortQualifiedName(this IEdmTypeReference typeReference)
         {
             Debug.Assert(typeReference != null, "typeReference != null");

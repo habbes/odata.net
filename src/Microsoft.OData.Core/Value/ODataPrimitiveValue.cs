@@ -26,7 +26,7 @@ namespace Microsoft.OData
                 throw new ArgumentNullException(Strings.ODataPrimitiveValue_CannotCreateODataPrimitiveValueFromNull, (Exception)null);
             }
 
-            if (!EdmLibraryExtensions.IsPrimitiveType(value.GetType()))
+            if (!EdmLibraryExtensions.IsPrimitiveTypeOptimized2(value.GetType()))
             {
                 throw new ODataException(Strings.ODataPrimitiveValue_CannotCreateODataPrimitiveValueFromUnsupportedValueType(value.GetType()));
             }
