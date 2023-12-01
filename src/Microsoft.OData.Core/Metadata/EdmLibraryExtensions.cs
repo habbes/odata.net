@@ -77,6 +77,15 @@ namespace Microsoft.OData.Metadata
         /// <summary>Type reference for Edm.Float.</summary>
         private static readonly EdmPrimitiveTypeReference SingleTypeReference = ToTypeReference(EdmCoreModel.Instance.GetPrimitiveType(EdmPrimitiveTypeKind.Single), false);
 
+#if !NETSTANDARD1_1
+        private static readonly HashSet<TypeCode> PrimitiveTypeCodes = new HashSet<TypeCode>();
+
+
+        private static readonly bool[] PrimitiveTypeCodesArray = new bool[32];
+
+        private static int PrimitiveTypeCodesBitMap = 0;
+#endif
+
         #region Edm Collection constants
 
         /// <summary>The qualifier to turn a type name into a Collection type name.</summary>
@@ -133,6 +142,20 @@ namespace Microsoft.OData.Metadata
             PrimitiveTypeReferenceMap.Add(typeof(Date?), ToTypeReference(EdmCoreModel.Instance.GetPrimitiveType(EdmPrimitiveTypeKind.Date), true));
             PrimitiveTypeReferenceMap.Add(typeof(TimeOfDay), ToTypeReference(EdmCoreModel.Instance.GetPrimitiveType(EdmPrimitiveTypeKind.TimeOfDay), false));
             PrimitiveTypeReferenceMap.Add(typeof(TimeOfDay?), ToTypeReference(EdmCoreModel.Instance.GetPrimitiveType(EdmPrimitiveTypeKind.TimeOfDay), true));
+
+#if !NETSTANDARD1_1
+            foreach (var type in PrimitiveTypeReferenceMap.Keys.Concat(new Type[] { typeof(uint), typeof(ushort), typeof(ulong) }))
+            {
+                TypeCode typeCode = Type.GetTypeCode(type);
+                if (typeCode != TypeCode.Empty && typeCode != TypeCode.Object && typeCode != TypeCode.DBNull)
+                {
+                    PrimitiveTypeCodes.Add(typeCode);
+                    PrimitiveTypeCodesArray[(int)typeCode] = true;
+                    PrimitiveTypeCodesBitMap |= (1 << (int)typeCode);
+                }
+                
+            }
+#endif
         }
 
         #region Internal methods
@@ -653,7 +676,8 @@ namespace Microsoft.OData.Metadata
                 || clrType == typeof(TimeOfDay?)
                 || clrType == typeof(UInt16)
                 || clrType == typeof(UInt32)
-                || clrType == typeof(UInt64));
+                || clrType == typeof(UInt64))
+                || typeof(ISpatial).IsAssignableFrom(clrType);
         }
 
 #pragma warning disable RS0016 // Add public types and members to the declared API
@@ -662,7 +686,7 @@ namespace Microsoft.OData.Metadata
         {
             Debug.Assert(clrType != null, "clrType != null");
 
-            return (clrType == typeof(string)
+            return clrType == typeof(string)
                 || clrType == typeof(int)
                 || clrType == typeof(bool)
                 || clrType == typeof(double)
@@ -674,8 +698,113 @@ namespace Microsoft.OData.Metadata
                 || clrType == typeof(UInt16)
                 || clrType == typeof(UInt32)
                 || clrType == typeof(UInt64)
-                || PrimitiveTypeReferenceMap.ContainsKey(clrType));
+                || PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
         }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized3(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return
+#if !NETSTANDARD1_1
+                PrimitiveTypeCodes.Contains(Type.GetTypeCode(clrType))
+                || clrType == typeof(DateTimeOffset)
+                || clrType == typeof(Guid)
+                || clrType == typeof(Date) ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized4(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return
+#if !NETSTANDARD1_1
+                PrimitiveTypeCodes.Contains(Type.GetTypeCode(clrType))
+                ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized5(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return
+#if !NETSTANDARD1_1
+                PrimitiveTypeCodesArray[(int)Type.GetTypeCode(clrType)]
+                ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized6(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+
+            return
+#if !NETSTANDARD1_1
+            PrimitiveTypeCodesArray[(int)Type.GetTypeCode(clrType)]
+                || clrType == typeof(DateTimeOffset)
+                || clrType == typeof(Guid)
+                || clrType == typeof(Date)
+                ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized7(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+#if !NETSTANDARD1_1
+            int typeCode = 1 << (int)Type.GetTypeCode(clrType);
+#endif
+
+            return
+#if !NETSTANDARD1_1
+                (PrimitiveTypeCodesBitMap & typeCode) == typeCode
+                ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
+#pragma warning disable RS0016 // Add public types and members to the declared API
+        public static bool IsPrimitiveTypeOptimized8(Type clrType)
+#pragma warning restore RS0016 // Add public types and members to the declared API
+        {
+            Debug.Assert(clrType != null, "clrType != null");
+#if !NETSTANDARD1_1
+            int typeCode = 1 << (int)Type.GetTypeCode(clrType);
+#endif
+            return
+#if !NETSTANDARD1_1
+                (PrimitiveTypeCodesBitMap & typeCode) == typeCode
+                || clrType == typeof(DateTimeOffset)
+                || clrType == typeof(Guid)
+                || clrType == typeof(Date)
+                ||
+#endif
+                PrimitiveTypeReferenceMap.ContainsKey(clrType)
+                || typeof(ISpatial).IsAssignableFrom(clrType);
+        }
+
 
 
         /// <summary>
@@ -1135,19 +1264,19 @@ namespace Microsoft.OData.Metadata
 #endif
 #endregion
 
-                #region ODataLib and WCF DS Server
+            #region ODataLib and WCF DS Server
 #if !ODATA_CLIENT
-                /// <summary>
-                /// Gets the Partail name of the definition referred to by the type reference.
-                /// </summary>
-                /// <param name="typeReference">The type reference to get the partial name for.</param>
-                /// <returns>The partial name of this <paramref name="typeReference"/>.</returns>
-                /// <remarks>
-                /// Note that this method is different from the EdmLib PartialName extension method in that it also returns
-                /// names for collection types. For EdmLib, collection types are functions and thus don't have a Partial name.
-                /// The name/string they use in CSDL is just shorthand for them.
-                /// </remarks>
-        internal static string ODataShortQualifiedName(this IEdmTypeReference typeReference)
+            /// <summary>
+            /// Gets the Partail name of the definition referred to by the type reference.
+            /// </summary>
+            /// <param name="typeReference">The type reference to get the partial name for.</param>
+            /// <returns>The partial name of this <paramref name="typeReference"/>.</returns>
+            /// <remarks>
+            /// Note that this method is different from the EdmLib PartialName extension method in that it also returns
+            /// names for collection types. For EdmLib, collection types are functions and thus don't have a Partial name.
+            /// The name/string they use in CSDL is just shorthand for them.
+            /// </remarks>
+            internal static string ODataShortQualifiedName(this IEdmTypeReference typeReference)
         {
             Debug.Assert(typeReference != null, "typeReference != null");
             Debug.Assert(typeReference.Definition != null, "typeReference.Definition != null");
@@ -1322,7 +1451,7 @@ namespace Microsoft.OData.Metadata
             return fullName;
         }
 #endif
-        #endregion
+#endregion
 
         #region ODataLib and Query project
 #if !ODATA_SERVICE && !ODATA_CLIENT
@@ -1513,7 +1642,7 @@ namespace Microsoft.OData.Metadata
         }
 
 #endif
-        #endregion
+#endregion
 
         #region Everyone
         /// <summary>
@@ -1835,8 +1964,8 @@ namespace Microsoft.OData.Metadata
         }
 
 #endif
-        #endregion
-        #endregion
+#endregion
+#endregion
 
         #region Private methods
         #region ODataLib only
@@ -2059,7 +2188,7 @@ namespace Microsoft.OData.Metadata
             }
         }
 #endif
-        #endregion
+#endregion
 
         #region Everyone
         /// <summary>
