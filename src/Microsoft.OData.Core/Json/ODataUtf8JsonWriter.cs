@@ -151,9 +151,7 @@ namespace Microsoft.OData.Json
 
         public void Flush()
         {
-            this.CommitUtf8JsonWriterContentsToBuffer();
-            this.writeStream.Write(this.bufferWriter.WrittenMemory.Span);
-            this.bufferWriter.Clear();
+            this.WriteToStream();
             this.writeStream.Flush();
         }
 
@@ -162,8 +160,15 @@ namespace Microsoft.OData.Json
         {
             if ((this.utf8JsonWriter.BytesPending + this.bufferWriter.WrittenCount) >= this.bufferFlushThreshold)
             {
-                this.Flush();
+                this.WriteToStream();
             }
+        }
+
+        private void WriteToStream()
+        {
+            this.CommitUtf8JsonWriterContentsToBuffer();
+            this.writeStream.Write(this.bufferWriter.WrittenMemory.Span);
+            this.bufferWriter.Clear();
         }
 
         /// <summary>
@@ -417,7 +422,7 @@ namespace Microsoft.OData.Json
 
             this.bufferWriter.Write(this.DoubleQuote.Slice(0, 1).Span);
 
-            this.Flush();
+            this.WriteToStream();
 
             int charsNotProcessedFromPreviousChunk = 0;
 
@@ -595,7 +600,7 @@ namespace Microsoft.OData.Json
 
             this.bufferWriter.Write(this.DoubleQuote.Slice(0, 1).Span);
 
-            this.Flush();
+            this.WriteToStream();
 
             int bytesNotWrittenFromPreviousChunk = 0;
 
@@ -1102,7 +1107,7 @@ namespace Microsoft.OData.Json
 
             this.bufferWriter.Write(this.DoubleQuote.Slice(0, 1).Span);
 
-            await this.FlushAsync();
+            await this.WriteToStreamAsync().ConfigureAwait(false);
 
             int charsNotProcessedFromPreviousChunk = 0;
 
@@ -1170,7 +1175,7 @@ namespace Microsoft.OData.Json
 
             this.bufferWriter.Write(this.DoubleQuote.Slice(0, 1).Span);
 
-            await FlushAsync().ConfigureAwait(false);
+            await WriteToStreamAsync().ConfigureAwait(false);
 
             int bytesNotWrittenFromPreviousChunk = 0;
 
@@ -1210,9 +1215,7 @@ namespace Microsoft.OData.Json
 
         public async Task FlushAsync()
         {
-            this.CommitUtf8JsonWriterContentsToBuffer();
-            await this.writeStream.WriteAsync(this.bufferWriter.WrittenMemory).ConfigureAwait(false);
-            this.bufferWriter.Clear();
+            await this.WriteToStreamAsync().ConfigureAwait(false);
             await this.writeStream.FlushAsync().ConfigureAwait(false);
         }
 
@@ -1250,8 +1253,15 @@ namespace Microsoft.OData.Json
         {
             if ((this.utf8JsonWriter.BytesPending + this.bufferWriter.WrittenCount) >= this.bufferFlushThreshold)
             {
-                await this.FlushAsync().ConfigureAwait(false);
+                await this.WriteToStreamAsync().ConfigureAwait(false);
             }
+        }
+
+        private async ValueTask WriteToStreamAsync()
+        {
+            this.CommitUtf8JsonWriterContentsToBuffer();
+            await this.writeStream.WriteAsync(this.bufferWriter.WrittenMemory).ConfigureAwait(false);
+            this.bufferWriter.Clear();
         }
         #endregion
     }
